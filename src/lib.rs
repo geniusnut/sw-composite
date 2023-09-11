@@ -798,9 +798,15 @@ pub fn over(src: u32, dst: u32) -> u32 {
     let a = packed_alpha(src);
     let a = 256 - a;
     let mask = 0xff00ff;
-    let rb = ((dst & 0xff00ff) * a) >> 8;
-    let ag = ((dst >> 8) & 0xff00ff) * a;
-    src + ((rb & mask) | (ag & !mask))
+    let mut rb = ((dst & 0xff00ff) * a) >> 8 & mask;
+    let mut ag = ((dst >> 8) & 0xff00ff) * a & !mask;
+    rb += src & mask;
+    ag += src & !mask;
+
+    min(rb & 0x000001FF, 0x000000FF)
+        | min(ag & 0x0001FF00, 0x0000FF00)
+        | min(rb & 0x01FF0000, 0x00FF0000)
+        | (ag & 0xFF000000)
 }
 
 #[cfg(test)]
@@ -933,6 +939,7 @@ pub fn over_in_legacy_lerp(src: u32, dst: u32, alpha: u32) -> u32 {
     alpha_mul(src, src_scale) + alpha_mul(dst, dst_scale)
 }
 
+use std::cmp::min;
 #[cfg(target_arch = "x86")]
 use std::arch::x86::{self as x86_intrinsics, __m128i};
 #[cfg(target_arch = "x86_64")]
