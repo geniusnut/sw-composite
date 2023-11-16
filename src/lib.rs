@@ -906,6 +906,14 @@ pub fn alpha_mul(x: u32, a: Alpha256) -> u32 {
     (src_rb & mask) | (src_ag & !mask)
 }
 
+fn over_naive(src: u32, dst: u32) -> u32 {
+    let src_a = packed_alpha(src);
+    let dst_a = packed_alpha(dst);
+    let a = src_a + dst_a - src_a * dst_a / 255;
+    println!("a: 0x{:x}", a);
+    a
+}
+
 // This approximates the division by 255 using a division by 256.
 // It matches the behaviour of SkBlendARGB32 from Skia in 2017.
 // The behaviour of SkBlendARGB32 was changed in 2016 by Lee Salzman
@@ -923,14 +931,15 @@ pub fn over_in(src: u32, dst: u32, alpha: u32) -> u32 {
 
     let mask = 0xFF00FF;
 
-    let src_rb = (src & mask) * src_alpha;
+    let src_rb = ((src & mask) * src_alpha) >> 8;
     let src_ag = ((src >> 8) & mask) * src_alpha;
 
-    let dst_rb = (dst & mask) * dst_alpha;
+    let dst_rb = ((dst & mask) * dst_alpha) >> 8;
     let dst_ag = ((dst >> 8) & mask) * dst_alpha;
 
+    (src_rb & mask) | (src_ag & !mask) + (dst_rb & mask) | (dst_ag & !mask)
     // we sum src and dst before reducing to 8 bit to avoid accumulating rounding errors
-    (((src_rb + dst_rb) >> 8) & mask) | ((src_ag + dst_ag) & !mask)
+    // (((src_rb + dst_rb) >> 8) & mask) | ((src_ag + dst_ag) & !mask)
 }
 
 pub fn over_in_legacy_lerp(src: u32, dst: u32, alpha: u32) -> u32 {
